@@ -1,2 +1,2 @@
 # simple_shell
-A team project Obasi Ngozi and Ngozi Agu
+A team project by Obasi Ngozi and Ngozi Agu
