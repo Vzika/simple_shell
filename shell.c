@@ -1,72 +1,57 @@
 #include "shell.h"
 
-int main(void)
+/**
+ * main - Entry point for the shell program.
+ * @argc: Number of command-line arguments.
+ * @argv: Array of command-line arguments.
+ * @envp: Array of environment variables.
+ *
+ * Return: Always 0.
+ */
+int main(__attribute__((unused)) int argc, char **argv, char **envp)
 {
-    char *input = NULL;
-    size_t len = 0;
-    pid_t pid;
+    char *buff = NULL;
+    size_t n = 0;
+    char full_path[256];
 
     while (1)
     {
-        display_prompt();
+        if (isatty(fileno(stdin)))
+            printf("$ ");
 
-        if (to_get_new_line(&input, &len, stdin) == -1)
+        if (getline(&buff, &n, stdin) == -1)
         {
-            /* Handle Ctrl+D */
-            printf("\n");
-            free(input);
+            fprintf(stderr, "Error reading input.\n");
             break;
         }
 
-        input[strcspn(input, "\n")] = '\0';
-
-        pid = fork();
-
-        if (pid == -1)
+        if (command_exists(buff, full_path, (const char **)envp) == 1)
         {
-            perror("Fork error");
-            free(input);
-            exit(EXIT_FAILURE);
-        }
-        else if (pid == 0)
-        {
-            char **args = (char **)malloc(2 * sizeof(char *));
-            if (args == NULL)
+            pid_t mypid = fork(); /* To create a child process */
+
+            if (mypid == -1)
             {
-                perror("Memory allocation error");
-                free(input);
-                exit(EXIT_FAILURE);
+                perror("fork");
             }
-
-            args[0] = input;
-            args[1] = NULL;
-
-            if (execvp(args[0], args) == -1)
+            else if (mypid == 0)
             {
-                perror("Execution error");
-                free(input);
-                free(args);
-                exit(EXIT_FAILURE);
+                if (execve(full_path, argv, envp) == -1)
+                {
+                    perror("execve");
+                    exit(EXIT_FAILURE); /* Exit child process on execve failure */
+                }
+            }
+            else
+            {
+                int status;
+                wait(&status);
+                printf("back to the parent");
             }
         }
-        else
-        {
-            int status;
-            if (waitpid(pid, &status, 0) == -1)
-            {
-                perror("Waitpid error");
-                free(input);
-                exit(EXIT_FAILURE);
-            }
-
-            if (WIFEXITED(status) && WEXITSTATUS(status) != 0)
-            {
-                fprintf(stderr, "Command not found or failed: %s\n", input);
-            }
-        }
-
-        free(input);
     }
+
+    /* Cleanup allocated memory for 'buff' before exiting the program */
+    free(buff);
 
     return 0;
 }

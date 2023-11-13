@@ -1,36 +1,28 @@
 #include "shell.h"
 
 /**
- * to_get_new_line - Custom implementation of getline.
- * @line: A pointer to the buffer storing the line.
- * @len: A pointer to the size of the buffer.
- * @fp: The file stream to read from.
+ * get_input - Process user input, removing newline if present.
+ * @buff: Pointer to the buffer storing user input.
+ * @n: Size of the buffer.
  *
- * Return: The number of characters read, or -1 on failure or end of file.
+ * Return: 0 on success, -1 on failure.
  */
-ssize_t to_get_new_line(char **line, size_t *len, FILE *fp)
-{
-    ssize_t nread;
+int get_input(char **buff, size_t *n) {
+    ssize_t i;
+    ssize_t read = getline(buff, n, stdin);
 
-    if (*line == NULL || *len == 0)
-    {
-        *len = MAX_INPUT_SIZE;
-        *line = malloc(*len);
-        if (*line == NULL)
-        {
-            perror("Memory allocation error");
-            exit(EXIT_FAILURE);
+    if (read == -1) {
+        perror("getline");
+        return -1;
+    }
+
+    for (i = 0; i < read; i++) {
+        if ((*buff)[i] == '\n') {
+            (*buff)[i] = '\0';
+            break;
         }
     }
 
-    nread = getline(line, len, fp);
-
-    if (nread == -1)
-    {
-        free(*line);
-        *line = NULL;
-    }
-
-    return nread;
+    return 0;
 }
 
