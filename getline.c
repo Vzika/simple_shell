@@ -6,7 +6,7 @@
  * @n: Size of the buffer.
  *
  * Return: 0 on success, -1 on failure.
- */
+ *
 int get_input(char **buff, size_t *n) {
     ssize_t i;
     ssize_t read = getline(buff, n, stdin);
@@ -25,4 +25,4 @@ int get_input(char **buff, size_t *n) {
 
     return 0;
 }
-
+*/

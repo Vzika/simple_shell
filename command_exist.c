@@ -1,8 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/stat.h>
+#include "shell.h"
 
 /**
  * command_exists - Check if a command exists in the PATH.
@@ -12,76 +8,60 @@
  *
  * Return: NULL if nothing is found, or the path if found.
  */
-char *command_exists(const char *cmd, char *full_path, const char **envp)
+char *command_exists(const char *cmd)
 {
 	const char *path = NULL;
-	int exists;
 	char *path_copy;
 	char *token;
 	char *full_command;
 	struct stat st;
-	full_command = (char*)malloc(sizeof(char)*10);
-
-	/* Iterate through the environment variables to find PATH 
-	   for (i = 0; envp[i] != NULL; i++)
-	   {
-	   if (strncmp(envp[i], "PATH=", 5) == 0)
-	   {
-	   path = envp[i] + 5;  //Extract the PATH value 
-	   printf("%s\n", path);
-	   break;
-	   }
-	   }
-
-	   if (path == NULL)
-	   {
-	   fprintf(stderr, "PATH environment variable not found.\n");
-	   return NULL; 
-	   }*/
-	path = getenv("PATH");
-	path_copy = strdup(path);
-	if (path_copy == NULL)
+	 if (cmd == NULL)
 	{
-		/*perror("strdup");*/
-		return NULL; /* Error */
-	}
+
+	        fprintf(stderr, "Invalid command\n");
+        	return NULL;
+    	}
+
+	path = getenv("PATH");
+	 if (path == NULL)
+	{
+        	fprintf(stderr, "PATH environment variable not found.\n");
+        	return NULL;
+    	}
+	path_copy = strdup(path);
+
+	full_command = (char *)malloc(strlen(path) + strlen(cmd) + 2);
+	if (path_copy == NULL || full_command == NULL)
+	{
+        	perror("Memory allocation error");
+        	free(path_copy);
+        	free(full_command);
+        	return NULL;
+    	}
 
 	token = strtok(path_copy, ":");
-	exists = 0;
 
-	while (token != NULL && !exists)
+	while (token != NULL)
 	{
 		strcpy(full_command, token);
 		strcat(full_command, "/");
 		strcat(full_command, cmd);
 
-		/*snprintf(full_command, sizeof(full_command), "%s/%s", token, cmd);*/
-
-		if (stat(full_command, &st) == 0 )
+		if (stat(full_command, &st) == 0 && (st.st_mode & S_IXUSR) != 0 )
 		{
-			/*strcpy(full_path, full_command);*/
+			free(path_copy);
 			return full_command;
 
-			exists = 1;
 		}
-		
-		else if (stat(full_command, &st) == -1)
-		{
-			free(full_command);
-			token = strtok(NULL, ":");
-			/*fprintf(stderr, "%s: No such file or directory\n", cmd);*/
-			exists = 0;
-		}
+		token = strtok(NULL, ":");
 
 	}
-
 	free(path_copy);
+	free(full_command);
+	/*Print an error message if the command is not found*/
+	fprintf(stderr, "%s: command not found\n", cmd);
 
-	if (!exists)
-	{
-		fprintf(stderr, "%s: command not found\n", cmd);
-	}
+    return NULL;
 
-	return full_command;
 }
 

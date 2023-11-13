@@ -10,9 +10,11 @@
  */
 int main(__attribute__((unused)) int argc, char **argv, char **envp)
 {
-    char *buff = NULL;
-    size_t n = 0;
-    char full_path[256];
+	char *buff = NULL;
+	size_t n = 0;
+	char *full_path;
+	pid_t mypid;
+	size_t len;
 
     while (1)
     {
@@ -24,10 +26,17 @@ int main(__attribute__((unused)) int argc, char **argv, char **envp)
             fprintf(stderr, "Error reading input.\n");
             break;
         }
+	len = strlen(buff);
+	if (buff[len - 1] == '\n')
+	{
+    		buff[len - 1] = '\0';  /*Replace newline with null terminator*/
+	}
 
-        if (command_exists(buff, full_path, (const char **)envp) == 1)
+	full_path = command_exists(buff);
+        if (full_path != NULL)
         {
-            pid_t mypid = fork(); /* To create a child process */
+		
+         mypid = fork(); /* To create a child process */
 
             if (mypid == -1)
             {
@@ -44,8 +53,8 @@ int main(__attribute__((unused)) int argc, char **argv, char **envp)
             else
             {
                 int status;
-                wait(&status);
-                printf("back to the parent");
+		 waitpid(mypid, &status, 0);  /*Use waitpid for more control*/
+                printf("Back to the parent\n");
             }
         }
     }
