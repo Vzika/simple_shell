@@ -31,7 +31,10 @@ int main(__attribute__((unused)) int argc, char **argv, char **envp)
 	{
     		buff[len - 1] = '\0';  /*Replace newline with null terminator*/
 	}
-
+	if(strcmp(buff, "exit") == 0)
+	{
+		exit(EXIT_SUCCESS);
+	}
 	full_path = command_exists(buff);
         if (full_path != NULL)
         {
@@ -61,6 +64,7 @@ int main(__attribute__((unused)) int argc, char **argv, char **envp)
 
     /* Cleanup allocated memory for 'buff' before exiting the program */
     free(buff);
+	free(full_path);
 
     return 0;
 }

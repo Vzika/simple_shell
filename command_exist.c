@@ -8,7 +8,7 @@
  *
  * Return: NULL if nothing is found, or the path if found.
  */
-char *command_exists(const char *cmd)
+char *command_exists(char *cmd)
 {
 	const char *path = NULL;
 	char *path_copy;
@@ -21,6 +21,10 @@ char *command_exists(const char *cmd)
 	        fprintf(stderr, "Invalid command\n");
         	return NULL;
     	}
+	if(stat(cmd, &st)==0)
+	{
+		return cmd;
+	}
 
 	path = getenv("PATH");
 	 if (path == NULL)
@@ -53,6 +57,7 @@ char *command_exists(const char *cmd)
 			return full_command;
 
 		}
+		/*free(full_command);*/
 		token = strtok(NULL, ":");
 
 	}
