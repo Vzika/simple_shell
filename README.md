@@ -6,7 +6,7 @@
 
 #tokenization of inputs "strtok"
 
-#to check if the file exit "stat()" 
+#to check if the file exit "stat()"
 
 #use env() to know the full path of the command i want to execute
 
@@ -15,5 +15,4 @@
 #But execve() overwrites the current process🥹
 #I can create the child process using "fork()"
 
-#to let the parent process to wait "wait()" 
-
+#to let the parent process to wait "wait()"
