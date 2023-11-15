@@ -1,71 +1,160 @@
 #include "shell.h"
 
 /**
- * main - Entry point for the shell program.
- * @argc: Number of command-line arguments.
- * @argv: Array of command-line arguments.
- * @envp: Array of environment variables.
+ * hsh - shell loop
+ * @info: the param & return info structure
+ * @av: the argument vector from main() function
  *
- * Return: Always 0.
+ * Return: 0 on success, 1 on error
  */
-int main(__attribute__((unused)) int argc, char **argv, char **envp)
+int hsh(info_t *info, char **av)
 {
-	char *buff = NULL;
-	size_t n = 0;
-	char *full_path;
-	pid_t mypid;
-	size_t len;
+	ssize_t r = 0;
+	int builtin_rett = 0;
 
-    while (1)
-    {
-        if (isatty(fileno(stdin)))
-            printf("$ ");
-
-        if (getline(&buff, &n, stdin) == -1)
-        {
-            fprintf(stderr, "Error reading input.\n");
-            break;
-        }
-	len = strlen(buff);
-	if (buff[len - 1] == '\n')
+	while (r != -1 && builtin_rett != -2)
 	{
-    		buff[len - 1] = '\0';  /*Replace newline with null terminator*/
+		clear_info(info);
+		if (interactiv(info))
+			_puts("$ ");
+		_eputchar(BUF_FLUSH);
+		r = get_input(info);
+		if (r != -1)
+		{
+			set_info(info, av);
+			builtin_rett = find_builtin(info);
+			if (builtin_rett == -1)
+				find_cmd(info);
+		}
+		else if (interactiv(info))
+			_putchar('\n');
+		free_info(info, 0);
 	}
-	if(strcmp(buff, "exit") == 0)
+	write_history(info);
+	free_info(info, 1);
+	if (!interactiv(info) && info->status)
+		exit(info->status);
+	if (builtin_rett == -2)
 	{
-		exit(EXIT_SUCCESS);
+		if (info->err_num == -1)
+			exit(info->status);
+		exit(info->err_num);
 	}
-	full_path = command_exists(buff);
-        if (full_path != NULL)
-        {
-		
-         mypid = fork(); /* To create a child process */
-
-            if (mypid == -1)
-            {
-                perror("fork");
-            }
-            else if (mypid == 0)
-            {
-                if (execve(full_path, argv, envp) == -1)
-                {
-                    perror("execve");
-                    exit(EXIT_FAILURE); /* Exit child process on execve failure */
-                }
-            }
-            else
-            {
-                int status;
-		 waitpid(mypid, &status, 0);  /*Use waitpid for more control*/
-                printf("Back to the parent\n");
-            }
-        }
-    }
-
-    /* Cleanup allocated memory for 'buff' before exiting the program */
-    free(buff);
-	free(full_path);
-
-    return 0;
+	return (builtin_rett);
 }
 
+/**
+ * find_builtin - finds a builtin command
+ * @info: the parameter & return info struct
+ *
+ * Return: -1 if builtin not found,
+ *			0 if builtin executed successfully,
+ *			1 if builtin found but not successful,
+ *			-2 if builtin signals exit()
+ */
+int find_builtin(info_t *info)
+{
+	int i, built_in_rettt = -1;
+	builtin_table builtintbl[] = {
+		{"exit", _myexit},
+		{"env", _myenv},
+		{"help", _myhelp},
+		{"history", history},
+		{"setenv", _mysetenv},
+		{"unsetenv", _myunsetenv},
+		{"cd", _mycd},
+		{"alias", _myalias},
+		{NULL, NULL}
+	};
+
+	for (i = 0; builtintbl[i].type; i++)
+		if (_strcmp(info->argv[0], builtintbl[i].type) == 0)
+		{
+			info->line_count++;
+			built_in_rettt = builtintbl[i].func(info);
+			break;
+		}
+	return (built_in_rettt);
+}
+
+/**
+ * find_cmd - finds a command in PATH
+ * @info: the parameter & return info struct
+ *
+ * Return: void
+ */
+void find_cmd(info_t *info)
+{
+	char *path = NULL;
+	int i, k;
+
+	info->path = info->argv[0];
+	if (info->linecount_flag == 1)
+	{
+		info->line_count++;
+		info->linecount_flag = 0;
+	}
+	for (i = 0, k = 0; info->arg[i]; i++)
+		if (!is_delim(info->arg[i], " \t\n"))
+			k++;
+	if (!k)
+		return;
+
+	path = find_path(info, _getenv(info, "PATH="), info->argv[0]);
+	if (path)
+	{
+		info->path = path;
+		fork_cmd(info);
+	}
+	else
+	{
+		if ((interactiv(info) || _getenv(info, "PATH=")
+			|| info->argv[0][0] == '/') && is_cmd(info, info->argv[0]))
+			fork_cmd(info);
+		else if (*(info->arg) != '\n')
+		{
+			info->status = 127;
+			print_error(info, "not found\n");
+		}
+	}
+}
+
+/**
+ * fork_cmd - forks a an exec thread to run cmd
+ * @info: the parameter & return info struct
+ *
+ * Return: void
+ */
+void fork_cmd(info_t *info)
+{
+	pid_t child_pid;
+
+	child_pid = fork();
+	if (child_pid == -1)
+	{
+		/* TODO: PUT ERROR FUNCTION */
+		perror("Error:");
+		return;
+	}
+	if (child_pid == 0)
+	{
+		if (execve(info->path, info->argv, get_environ(info)) == -1)
+		{
+			free_info(info, 1);
+			if (errno == EACCES)
+				exit(126);
+			exit(1);
+		}
+		/* TODO: PUT ERROR FUNCTION */
+	}
+	else
+	{
+		wait(&(info->status));
+		if (WIFEXITED(info->status))
+		{
+			info->status = WEXITSTATUS(info->status);
+			if (info->status == 126)
+				print_error(info, "Permission denied\n");
+		}
+	}
+}
